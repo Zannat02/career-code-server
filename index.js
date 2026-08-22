@@ -39,6 +39,36 @@ async function run() {
   try {
     await client.connect();
 
+    const jobsCollection = client.db('careerCode').collection('jobs');
+    const applicationsCollection = client.db('careerCode').collection('application')
+
+    // jobs api
+    app.get('/jobs', async(req, res) =>{
+      const cursor = jobsCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+
+    app.get('/jobs/:id', async (req, res) =>{
+       const id= req.params.id;
+       const query ={_id: new ObjectId(id) }
+       const result = await jobsCollection.findOne(query);
+       res.send(result);
+    })
+
+
+    //job application related apis
+
+    app.post('/applications', async(req, res) =>{
+      const application = req.body;
+      console.log(application);
+      const result = await applicationsCollection.insertOne(application);
+      res.send(result);
+    })
+
+
+
+
     console.log('Successfully connected to MongoDB!');
 
     app.listen(port, () => {
