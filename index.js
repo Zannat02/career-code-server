@@ -21,11 +21,7 @@ const client = new MongoClient(uri, {
   },
 });
 
-// Database
-// const db = client.db('careerCodeDB');
-// const usersCollection = db.collection('users');
-// const jobsCollection = db.collection('jobs');
-// const applicationsCollection = db.collection('applications');
+
 
 // Routes
 app.get('/', (req, res) => {
@@ -43,40 +39,95 @@ async function run() {
     const applicationsCollection = client.db('careerCode').collection('application')
 
     // jobs api
-    app.get('/jobs', async(req, res) =>{
+    app.get('/jobs', async (req, res) => {
       const cursor = jobsCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     })
 
-    app.get('/jobs/:id', async (req, res) =>{
-       const id= req.params.id;
-       const query ={_id: new ObjectId(id) }
-       const result = await jobsCollection.findOne(query);
-       res.send(result);
+    app.get('/jobs/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await jobsCollection.findOne(query);
+      res.send(result);
     })
 
 
     //job application related apis
 
-     app.get('/applications', async(req, res)=>{
-       const email = req.query.email;
+    // app.get('/applications', async (req, res) => {
+    //   const email = req.query.email;
 
-       const query ={
-        applicant: email
-       }
-       const result = await applicationsCollection.find(query).toArray()
-       res.send(result);
-     })
+    //   const query = {
+    //     applicant: email
+    //   }
+    //   const result = await applicationsCollection.find(query).toArray();
+
+    //   // bad way to aggregate
+
+    //   for (const application of result) {
+    //     const jobId = application.jobId;
+    //     const jobQuery = { _id: new ObjectId(jobId) }
+
+    //     const job = await jobsCollection.findOne(jobQuery)
+    //     application.company = job.company
+    //     application.title = job.title
+    //     application.company_logo = job.company_logo
+
+    //   }
+    //   res.send(result);
+    // })
+
+    app.get('/applications', async (req, res) => {
+      const email = req.query.email;
+      const query = { applicant: email };
+      const result = await applicationsCollection.find(query).toArray();
+
+      for (const application of result) {
+        const jobId = application.jobId;
+        const jobQuery = { _id: new ObjectId(jobId) };
+        const job = await jobsCollection.findOne(jobQuery);
+
+        if (job) {
+          application.company = job.company;
+          application.title = job.title;
+          application.company_logo = job.company_logo;
+          application.description = job.description;
+        }
+      }
+      res.send(result);
+    });
 
 
-    app.post('/applications', async(req, res) =>{
+    app.post('/applications', async (req, res) => {
       const application = req.body;
       console.log(application);
       const result = await applicationsCollection.insertOne(application);
       res.send(result);
     })
 
+
+
+
+
+    app.delete('/applications/:id', async (req, res) => {
+      const id = req.params.id;
+      const email = req.query.email; // frontend theke email pathabo
+
+      const query = { _id: new ObjectId(id) };
+      const application = await applicationsCollection.findOne(query);
+
+      if (!application) {
+        return res.status(404).send({ message: 'Application not found' });
+      }
+
+      if (application.applicant !== email) {
+        return res.status(403).send({ message: 'Forbidden: you can only delete your own application' });
+      }
+
+      const result = await applicationsCollection.deleteOne(query);
+      res.send(result);
+    });
 
 
 
